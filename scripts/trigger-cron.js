@@ -3,18 +3,59 @@
 /**
  * Script to manually trigger Cloudflare Worker cron jobs locally
  *
- * Usage:
- *   node scripts/trigger-cron.js                    # Trigger with default cron pattern
- *   node scripts/trigger-cron.js "* * * * *"       # Trigger with specific cron pattern
- *   node scripts/trigger-cron.js "* * * * *" 1234567890  # Trigger with cron and time
+ * Usage (positional arguments):
+ *   node scripts/trigger-cron.js [cron] [time] [port]
+ *
+ * Usage (named arguments):
+ *   node scripts/trigger-cron.js -cron "pattern" -time timestamp -port 3000
+ *   node scripts/trigger-cron.js --cron "pattern" --time timestamp --port 3000
+ *
+ * Examples:
+ *   node scripts/trigger-cron.js
+ *   node scripts/trigger-cron.js -cron "* * * * *"
+ *   node scripts/trigger-cron.js -cron "* * * * *" -port 3000
+ *   node scripts/trigger-cron.js -port 3000 -cron "*\/10 * * * *" -time 1234567890
  */
 
 const DEFAULT_PORT = 8787;
 const DEFAULT_CRON = "* * * * *";
 
-const port = process.env.PORT || DEFAULT_PORT;
-const cronPattern = process.argv[2] || DEFAULT_CRON;
-const scheduledTime = process.argv[3];
+// Parse command-line arguments
+function parseArgs() {
+  const args = { cron: null, time: null, port: null };
+  const argv = process.argv.slice(2);
+
+  // Check for named arguments
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    const nextArg = argv[i + 1];
+
+    if ((arg === "-cron" || arg === "--cron") && nextArg) {
+      args.cron = nextArg;
+      i++; // Skip next argument as it's the value
+    } else if ((arg === "-time" || arg === "--time") && nextArg) {
+      args.time = nextArg;
+      i++;
+    } else if ((arg === "-port" || arg === "--port") && nextArg) {
+      args.port = Number(nextArg);
+      i++;
+    }
+  }
+
+  // Fallback to positional arguments if named args not used
+  if (!args.cron && !args.time && !args.port && argv.length > 0) {
+    args.cron = argv[0] || null;
+    args.time = argv[1] || null;
+    args.port = argv[2] ? Number(argv[2]) : null;
+  }
+
+  return args;
+}
+
+const parsedArgs = parseArgs();
+const cronPattern = parsedArgs.cron || DEFAULT_CRON;
+const scheduledTime = parsedArgs.time || null;
+const port = parsedArgs.port || Number(process.env.PORT) || DEFAULT_PORT;
 
 const url = new URL(`http://localhost:${port}/cdn-cgi/handler/scheduled`);
 url.searchParams.set("cron", cronPattern);

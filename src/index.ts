@@ -11,6 +11,7 @@ const scheduledCron = async (
   env: typeof Env,
   ctx: ExecutionContext
 ) => {
+  console.log(controller.cron);
   switch (controller.cron) {
     case "* * * * *":
       console.log("Every 1 minute");
